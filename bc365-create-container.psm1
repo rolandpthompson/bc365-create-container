@@ -175,9 +175,10 @@ function Select-Artifact($artifacts) {
     }
 }
 
-function Start-BCContainerBuild($artifactUrl, $name) {
-    Download-Artifacts -artifactUrl ($artifactUrl) -includePlatform
+function Start-BCContainerBuild($artifactUrl, $name, $auth, $ssl, $includeCSide) {
     $tempPath = Get-Folder
+
+    Download-Artifacts -artifactUrl ($artifactUrl) -includePlatform
     $containername = $name
     $containerBasePath = $tempPath + "\" + $containername
     If ((Test-Path $containerBasePath) -eq $False) {
@@ -186,36 +187,57 @@ function Start-BCContainerBuild($artifactUrl, $name) {
 
     $license = Get-LicenceFile $defaultLicenceFolder
 
-    $sslCertLocation = 'http://' + $containername + ':8080/certificate.cer'
-    $sslFileLocation = $containerBasePath + '\certificate.cer'
+    $sslCertLocation = '';
+    if ($ssl) {
+        $sslCertLocation = 'http://' + $containername + ':8080/certificate.cer'
+        $sslFileLocation = $containerBasePath + '\certificate.cer'
+    }
+
+    # Build params
+    $parameters = @{
+        '-containername' = $containername
+    }
+
+    $parameters['-accept_eula'] = $true
+    $parameters['-updateHosts'] = $true
+    $parameters['-licenseFile'] = $license
+    $parameters['-artifactUrl'] = $artifactUrl
+    $parameters['-auth'] = $auth
+    $parameters['-useSSL'] = $ssl
+    $parameters['-includeCSide'] = $includeCSide
+    if ($auth = 'NavUserPassword'){
+        $credential = Get-Credential -Message 'Please enter credentials for the container.'
+        $parameters['-Credential'] = $credential
+    }
 
     Measure-command {
-        New-BCContainer -accept_eula `
-            -useSSL `
-            -containername $containername `
-            -auth Windows `
-            -updateHosts `
-            -licenseFile $license `
-            -artifactUrl $artifactUrl
 
-        Write-Output "Getting the SSL Certificate"
-        $client = new-object System.Net.WebClient
-        $client.DownloadFile($sslCertLocation, $sslFileLocation)
+        New-BCContainer @parameters     
 
-        Write-Output "Installing the SSL Certificate into the Local Machine Trusted Store"
-        Import-Certificate -FilePath $sslFileLocation -CertStoreLocation 'Cert:\LocalMachine\Root' -Verbose
+        if ($ssl) {
+            Write-Output "Getting the SSL Certificate"
+            $client = new-object System.Net.WebClient
+            $client.DownloadFile($sslCertLocation, $sslFileLocation)
 
-        #Remove-Item $sslFileLocation
-
+            Write-Output "Installing the SSL Certificate into the Local Machine Trusted Store"
+            Import-Certificate -FilePath $sslFileLocation -CertStoreLocation 'Cert:\LocalMachine\Root' -Verbose
+        }
+        
     }
 }
 
 function New-BC365Container() {
 
-    [CmdletBinding()]
     param (
-        [Parameter(Mandatory)]
-        [string]$containerName
+        [Parameter(Mandatory = $true)]
+        [string]$ContainerName,
+
+        [ValidateSet("Windows", "NavUserPassword")]
+        [string]$Auth = "Windows",
+
+        [bool]$SSL = $false,
+
+        [bool]$CSide = $false
     )
 
     # Variables
@@ -247,10 +269,12 @@ function New-BC365Container() {
                     Write-Output "Aborted... artifact not specified"
                 }
                 else {
-                    Start-BCContainerBuild $selectedArtifact $containerName
+                    Start-BCContainerBuild $selectedArtifact $ContainerName $Auth $SSL $CSide
                 }
             }
         }
     }
 
 }
+
+# New-BC365Container -ContainerName 'test' -Auth 'NavUserPassword' -SSL $False -CSide $true
