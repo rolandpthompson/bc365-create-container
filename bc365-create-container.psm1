@@ -14,8 +14,14 @@ function Get-LicenceFile() {
     return $OpenFileDialog.filename
 }
 
-function Get-Artifacts($type, $language) {
-    Get-BCArtifactUrl -type $type -country $language -select All
+function Get-Artifacts($type, $language, $preview) {
+  
+    if ($preview)
+    {
+        Get-BCArtifactUrl -storageAccount BcPublicPreview -type $type -country $language -select All
+    } else {
+        Get-BCArtifactUrl -type $type -country $language -select All        
+    }
 }
 
 function Get-Folder($initialDirectory) {
@@ -237,13 +243,15 @@ function New-BC365Container() {
 
         [bool]$SSL = $false,
 
-        [bool]$CSide = $false
+        [bool]$CSide = $false,
+
+        [bool]$Preview = $false
     )
 
     # Variables
     $defaultLanguage = 'gb'
     $defaultType = 'OnPrem'
-
+    
     # Select type
     $selectedType = Select-Type $defaultType
     if ($null -eq $selectedType) {
@@ -258,7 +266,7 @@ function New-BC365Container() {
         }
         else {
             # get the available artifacts for type and language
-            $availableArtifacts = Get-Artifacts $selectedType $selectedLanguage
+            $availableArtifacts = Get-Artifacts $selectedType $selectedLanguage $Preview
             if ($null -eq $availableArtifacts) {
                 Write-Output "Aborted... artifacts not found"
             }

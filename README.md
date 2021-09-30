@@ -14,6 +14,7 @@ You need to make sure you have the BcContainerHelper PowerShell module
 * `-Auth`: Windows or NavUserPassword (default is Windows)
 * `-SSL`: Defines if local SSL should be used (default is false)
 * `-CSide`: Specifies if CSide client etc should be installed (default is false)
+* `-Preview` : Specifies that we want to use the Public Preview artifacts (fault is false)
 
 ## Installation
 
@@ -29,8 +30,23 @@ Simplest usage is:
 New-BC365Container -ContainerName *yourname*
 ```
 
+Recommended normal usage is
+
+```
+New-BC365Container -ContainerName *yourname* -SSL $true -Auth NavUserPassword
+```
+
+Recommended normal usage is (for publis previews)
+
+```
+New-BC365Container -ContainerName *yourname* -SSL $true -Auth NavUserPassword -Preview $true
+```
 
 ## Release Notes
+### Version 0.0.7
+
+Added parameter for Public preview artifacts
+
 ### Version 0.0.6
 
 Added parameters for SSL, CSide and authentication
