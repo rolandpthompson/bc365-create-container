@@ -104,7 +104,7 @@ function Select-Language($type) {
     Add-Type -AssemblyName System.Drawing
 
     $form = New-Object System.Windows.Forms.Form
-    $form.Text = 'Select type'
+    $form.Text = 'Select language'
     $form.Size = New-Object System.Drawing.Size(380, 220)
     $form.StartPosition = 'CenterScreen'
     $form.FormBorderStyle = 'FixedDialog'
@@ -283,7 +283,14 @@ function New-BC365Container() {
 
     
     # Select type
-    $selectedType = Select-Type $defaultType
+    if ($Insider)
+    {
+        $selectedType = 'Sandbox'
+    }
+    else {
+        $selectedType = Select-Type $defaultType
+    }
+
     if ($null -eq $selectedType) {
         Write-Output "Aborted... type not defined"
     }
