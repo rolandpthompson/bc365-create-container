@@ -9,7 +9,7 @@ function Get-LicenceFile() {
 
     $OpenFileDialog = New-Object System.Windows.Forms.OpenFileDialog
     $OpenFileDialog.Title = 'Select licence file'
-    $OpenFileDialog.filter = 'Licence File|*.flf'
+    $OpenFileDialog.filter = 'Licence File|*.flf;*.bclicense'
     [void] $OpenFileDialog.ShowDialog()
     return $OpenFileDialog.filename
 }
