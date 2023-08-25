@@ -14,12 +14,28 @@ function Get-LicenceFile() {
     return $OpenFileDialog.filename
 }
 
-function Get-Artifacts($type, $language, $preview) {
+function Get-Artifacts($type, $language, $preview, $insider, $nextMajor) {
   
     if ($preview)
     {
         Get-BCArtifactUrl -storageAccount BcPublicPreview -type $type -country $language -select All
-    } else {
+    } 
+    if ($insider)
+    {
+
+        # get token from environment variable
+        $sasToken = (get-childitem -Path Env:BcSasToken).Value
+
+        if ($nextMajor)
+        {
+            Get-BCArtifactUrl -country $language -select NextMajor -sasToken $sasToken
+        }
+        else
+        {
+            Get-BCArtifactUrl -country $language -select NextMinor -sasToken $sasToken
+        }
+    }
+    else {
         Get-BCArtifactUrl -type $type -country $language -select All        
     }
 }
@@ -181,7 +197,7 @@ function Select-Artifact($artifacts) {
     }
 }
 
-function Start-BCContainerBuild($artifactUrl, $name, $auth, $ssl, $includeCSide) {
+function Start-BCContainerBuild($artifactUrl, $name, $auth, $ssl, $includeCSide, $premiumPlan, $insider) {
     $tempPath = Get-Folder
 
     Download-Artifacts -artifactUrl ($artifactUrl) -includePlatform
@@ -206,6 +222,8 @@ function Start-BCContainerBuild($artifactUrl, $name, $auth, $ssl, $includeCSide)
 
     $parameters['-accept_eula'] = $true
     $parameters['-updateHosts'] = $true
+    $parameters['-assignPremiumPlan'] = $premiumPlan
+    $parameters['-dns'] = '8.8.8.8'
     $parameters['-licenseFile'] = $license
     $parameters['-artifactUrl'] = $artifactUrl
     $parameters['-auth'] = $auth
@@ -242,15 +260,27 @@ function New-BC365Container() {
         [string]$Auth = "Windows",
 
         [bool]$SSL = $false,
-
+ 
         [bool]$CSide = $false,
+ 
+        [bool]$Preview = $false,
+ 
+        [bool]$Insider = $false,
+        
+        [bool]$NextMajor = $true,
 
-        [bool]$Preview = $false
+        [bool]$PremiumPlan = $false
     )
 
     # Variables
     $defaultLanguage = 'gb'
     $defaultType = 'OnPrem'
+
+    if (($preview) -and ($insider)) {
+        Write-Output "Preview and Insider are mutually exclusive. Please select only one."
+        return $null
+    }
+
     
     # Select type
     $selectedType = Select-Type $defaultType
@@ -266,7 +296,7 @@ function New-BC365Container() {
         }
         else {
             # get the available artifacts for type and language
-            $availableArtifacts = Get-Artifacts $selectedType $selectedLanguage $Preview
+            $availableArtifacts = Get-Artifacts $selectedType $selectedLanguage $Preview $Insider $NextMajor
             if ($null -eq $availableArtifacts) {
                 Write-Output "Aborted... artifacts not found"
             }
@@ -277,7 +307,7 @@ function New-BC365Container() {
                     Write-Output "Aborted... artifact not specified"
                 }
                 else {
-                    Start-BCContainerBuild $selectedArtifact $ContainerName $Auth $SSL $CSide
+                    Start-BCContainerBuild $selectedArtifact $ContainerName $Auth $SSL $CSide $PremiumPlan
                 }
             }
         }
