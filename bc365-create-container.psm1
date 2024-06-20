@@ -197,7 +197,7 @@ function Select-Artifact($artifacts) {
     }
 }
 
-function Start-BCContainerBuild($artifactUrl, $name, $auth, $ssl, $includeCSide, $premiumPlan, $insider) {
+function Start-BCContainerBuild($artifactUrl, $name, $auth, $ssl, $includeCSide, $premiumPlan, $insider, $uploadLicense, $importTestTookit) {
     $tempPath = Get-Folder
 
     Download-Artifacts -artifactUrl ($artifactUrl) -includePlatform
@@ -206,8 +206,6 @@ function Start-BCContainerBuild($artifactUrl, $name, $auth, $ssl, $includeCSide,
     If ((Test-Path $containerBasePath) -eq $False) {
         New-Item -Path $containerBasePath -ItemType "directory" | Out-Null
     }
-
-    $license = Get-LicenceFile $defaultLicenceFolder
 
     $sslCertLocation = '';
     if ($ssl) {
@@ -224,7 +222,19 @@ function Start-BCContainerBuild($artifactUrl, $name, $auth, $ssl, $includeCSide,
     $parameters['-updateHosts'] = $true
     $parameters['-assignPremiumPlan'] = $premiumPlan
     $parameters['-dns'] = '8.8.8.8'
-    $parameters['-licenseFile'] = $license
+    
+    if ($uploadLicense)
+    {
+        $license = Get-LicenceFile $defaultLicenceFolder
+        $parameters['-licenseFile'] = $license
+    }
+
+    if ($importTestTookit)
+    {
+        $parameters['-includeTestToolkit'] = $true
+    }
+
+
     $parameters['-artifactUrl'] = $artifactUrl
     $parameters['-auth'] = $auth
     $parameters['-useSSL'] = $ssl
@@ -246,7 +256,6 @@ function Start-BCContainerBuild($artifactUrl, $name, $auth, $ssl, $includeCSide,
             Write-Output "Installing the SSL Certificate into the Local Machine Trusted Store"
             Import-Certificate -FilePath $sslFileLocation -CertStoreLocation 'Cert:\LocalMachine\Root' -Verbose
         }
-        
     }
 }
 
@@ -269,8 +278,18 @@ function New-BC365Container() {
         
         [bool]$NextMajor = $true,
 
-        [bool]$PremiumPlan = $false
+        [bool]$PremiumPlan = $false,
+
+        [bool]$UploadLicense = $false,
+        
+        [bool]$ImportTestTookit = $false
+
     )
+
+    $originalColour = $host.ui.RawUI.ForegroundColor
+    $host.ui.RawUI.ForegroundColor = "DarkGreen"
+    Write-Output "New-BC365Container - Version 0.0.9"
+    $host.ui.RawUI.ForegroundColor = $originalColour
 
     # Variables
     $defaultLanguage = 'gb'
@@ -280,7 +299,6 @@ function New-BC365Container() {
         Write-Output "Preview and Insider are mutually exclusive. Please select only one."
         return $null
     }
-
     
     # Select type
     if ($Insider)
@@ -314,7 +332,7 @@ function New-BC365Container() {
                     Write-Output "Aborted... artifact not specified"
                 }
                 else {
-                    Start-BCContainerBuild $selectedArtifact $ContainerName $Auth $SSL $CSide $PremiumPlan
+                    Start-BCContainerBuild $selectedArtifact $ContainerName $Auth $SSL $CSide $PremiumPlan $Insider $UploadLicense $ImportTestTookit
                 }
             }
         }
